@@ -1,0 +1,26 @@
+SET ROLE casuadmin;
+
+CREATE OR REPLACE FUNCTION array_mad (float4[])
+returns double precision
+as '@INSTPATH@/statsfunc.so', 'array_mad'
+language 'c';
+
+CREATE OR REPLACE FUNCTION mad (float4[])
+returns double precision
+as '@INSTPATH@/statsfunc.so', 'array_mad'
+language 'c';
+
+CREATE OR REPLACE FUNCTION quantile (float4[], float)
+returns double precision
+as '@INSTPATH@/statsfunc.so', 'array_quantile'
+language 'c';
+
+DROP AGGREGATE mad(float4);
+
+CREATE AGGREGATE mad(float4) (
+	SFUNC=array_append,
+	STYPE=float4[],
+	FINALFUNC=array_mad
+);
+
+
