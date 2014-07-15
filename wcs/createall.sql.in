@@ -5,15 +5,16 @@ returns double precision
 as '@INSTPATH@/wcsfunc.so', 'angdist'
 language 'c';
 
-CREATE OR REPLACE FUNCTION onchip (double precision, double precision, integer, integer, character varying, character varying, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision)
+CREATE OR REPLACE FUNCTION onchip (double precision, double precision, integer, integer, character varying, character varying, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision)
 RETURNS boolean
 AS '@INSTPATH@/wcsfunc.so', 'onchip'
 LANGUAGE 'c';
 
-CREATE OR REPLACE FUNCTION onchip (double precision, double precision, integer, integer, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision)
+CREATE OR REPLACE FUNCTION onchip (double precision, double precision, integer, integer, character varying, character varying, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision)
 RETURNS boolean
 AS '@INSTPATH@/wcsfunc.so', 'onchip'
 LANGUAGE 'c';
+
 
 
 

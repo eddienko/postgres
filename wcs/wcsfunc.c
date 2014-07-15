@@ -1,8 +1,10 @@
 
+
 /* include postgres headers */
 #include "postgres.h"
 #include <string.h>
 #include "fmgr.h"
+#include "utils/builtins.h"
 
 /* include wcslib headers */
 #include <wcshdr.h>
@@ -13,6 +15,19 @@
 #ifdef PG_MODULE_MAGIC
 PG_MODULE_MAGIC;
 #endif
+
+/** 
+ * convert C string to text pointer.
+ */
+#define GET_TEXT(cstrp) \
+   DatumGetTextP(DirectFunctionCall1(textin, CStringGetDatum(cstrp)))
+
+/** 
+ * convert text pointer to C string.
+ */
+
+#define GET_STR(textp)  \
+   DatumGetCString(DirectFunctionCall1(textout, PointerGetDatum(textp)))
 
 /* Declare exported functions */
 PG_FUNCTION_INFO_V1(angdist);
@@ -50,13 +65,14 @@ Datum onchip(PG_FUNCTION_ARGS) {
 	char *ctype1, *ctype2;
 	char ctype[2][9] = {"RA---TAN", "DEC--TAN"};
 	struct wcsprm *wcs;
+	struct pvcard PV[3];
 
 	ra = PG_GETARG_FLOAT8(0);
 	dec = PG_GETARG_FLOAT8(1);
 	naxis1 = PG_GETARG_INT32(2);
 	naxis2 = PG_GETARG_INT32(3);
-	ctype1 = PG_GETARG_CSTRING(4);
-	ctype2 = PG_GETARG_CSTRING(5);
+	ctype1 = GET_STR(PG_GETARG_CSTRING(4));
+	ctype2 = GET_STR(PG_GETARG_CSTRING(5));
 	crval[0] = PG_GETARG_FLOAT8(6);
 	crval[1] = PG_GETARG_FLOAT8(7);
 	crpix[0] = PG_GETARG_FLOAT8(8);
@@ -66,9 +82,23 @@ Datum onchip(PG_FUNCTION_ARGS) {
 	cd[1][0] = PG_GETARG_FLOAT8(12);
 	cd[1][1] = PG_GETARG_FLOAT8(13);
 
-	pv21 = PG_GETARG_FLOAT8(14);
-	pv23 = PG_GETARG_FLOAT8(15);
-	pv25 = PG_GETARG_FLOAT8(16);
+	if PG_ARGISNULL(14) {
+		pv21 = 0.0;
+	} else {
+		pv21 = PG_GETARG_FLOAT8(14);
+	}
+
+	if PG_ARGISNULL(15) {
+		pv23 = 0.0;
+	} else {
+		pv23 = PG_GETARG_FLOAT8(15);
+	}
+
+	if PG_ARGISNULL(16) {
+		pv25 = 0.0;
+	} else {
+		pv25 = PG_GETARG_FLOAT8(16);
+	}
 
 	/* initialize wcs structure */
 	wcs = malloc(sizeof(struct wcsprm));
@@ -90,11 +120,32 @@ Datum onchip(PG_FUNCTION_ARGS) {
 		}
 	}
 
+	strcpy(ctype[0], ctype1);
+	strcpy(ctype[1], ctype2);
 	for (i = 0; i < naxis; i++) {
 		strcpy(wcs->ctype[i], &ctype[i][0]);
 	}
 
-	wcs->npv = 0;
+	wcs->npv=0;
+
+	if (PG_ARGISNULL(14)) {
+		wcs->npv = 0;
+	} else {
+		PV[0].i = 2;
+		PV[0].m = 1;
+		PV[0].value = pv21;
+                PV[1].i = 2;
+                PV[1].m = 3;
+                PV[1].value = pv23;
+                PV[2].i = 2;
+                PV[2].m = 5;
+                PV[2].value = pv25;
+		
+		wcs->npv = 3;
+		for (i = 0; i < 3; i++) {
+			wcs->pv[i] = PV[i];
+		}
+	}
 
 	wcsset(wcs);
 
@@ -105,7 +156,7 @@ Datum onchip(PG_FUNCTION_ARGS) {
 
 	ereport( INFO,
 		( errcode( ERRCODE_SUCCESSFUL_COMPLETION ),
-		errmsg( "%f %f -> %f %f %d   : %s \n", world[0], world[1], pixcrd[0], pixcrd[1], res, ctype1   )));
+		errmsg( "%f %f -> %f %f %d  : %s %s \n", world[0], world[1], pixcrd[0], pixcrd[1], res, ctype1, ctype2   )));
 	
 
 	if (pixcrd[0]>0 & pixcrd[0]<=naxis1 & pixcrd[1]>0 & pixcrd[1]<=naxis2) {
