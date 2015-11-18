@@ -16,5 +16,29 @@ AS '@INSTPATH@/wcsfunc.so', 'onchip'
 LANGUAGE 'c';
 
 
+CREATE OR REPLACE FUNCTION ad2string (double precision, double precision)
+returns text
+as '@INSTPATH@/wcsfunc.so', 'ad2string'
+language 'c';
+
+CREATE OR REPLACE function onchip(ra float, decl float, naxis1 integer, naxis2 integer, data json, OUT flag integer)  AS
+$BODY$
+
+    import json
+    from astropy.wcs import WCS
+
+    flag = 0
+
+    wcs = json.loads(data)
+    w = WCS(wcs)
+    x, y = w.wcs_world2pix(ra, decl, 1)
+
+    if (x>1 and x<naxis1 and y>1 and y<naxis2):
+        flag = 1
+
+    return flag
+$BODY$
+LANGUAGE 'plpythonu';
+
 
 

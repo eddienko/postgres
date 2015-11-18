@@ -1,4 +1,4 @@
-
+#include <math.h>
 
 /* include postgres headers */
 #include "postgres.h"
@@ -32,8 +32,35 @@ PG_MODULE_MAGIC;
 /* Declare exported functions */
 PG_FUNCTION_INFO_V1(angdist);
 PG_FUNCTION_INFO_V1(onchip);
+PG_FUNCTION_INFO_V1(ad2string);
 
 int sphdpa(int nfield, double lng0, double lat0, double lng[], double lat[], double *dist, double *pa);
+
+Datum ad2string(PG_FUNCTION_ARGS) {
+	int clen = 30;
+	double a, d;
+	int rah, ram, decg, decm;
+	double ras, decs;
+	char buffer[clen];
+	
+	a = PG_GETARG_FLOAT8(0);
+	d = PG_GETARG_FLOAT8(1);
+
+	a = a/15.0;
+	rah = (int) a;
+	ram = (int) ((a-rah)*60.0);
+	ras = ((a - rah)*60.0-ram)*60.0;
+ 
+	decg = (int) d;
+	decm = (int) ((fabs(d) - abs(decg))*60.0);
+	decs = ((fabs(d) - abs(decg))*60.0 - decm)*60.0;
+	
+	sprintf(buffer, "%02d:%02d:%05.2f %+02d:%02d:%05.2f", rah, ram, ras, decg, decm, decs);
+	
+	
+	PG_RETURN_TEXT_P(cstring_to_text(buffer));
+	
+}
 
 Datum angdist(PG_FUNCTION_ARGS) {
 	int nfield=1;
@@ -64,6 +91,7 @@ Datum onchip(PG_FUNCTION_ARGS) {
 	double crval[2], crpix[2], cd[2][2], pv21=0, pv23=0, pv25=0;
 	char *ctype1, *ctype2;
 	char ctype[2][9] = {"RA---TAN", "DEC--TAN"};
+	char *zpn="ZPN";
 	struct wcsprm *wcs;
 	struct pvcard PV[3];
 
@@ -81,7 +109,17 @@ Datum onchip(PG_FUNCTION_ARGS) {
 	cd[0][1] = PG_GETARG_FLOAT8(11);
 	cd[1][0] = PG_GETARG_FLOAT8(12);
 	cd[1][1] = PG_GETARG_FLOAT8(13);
+	pv21 = PG_GETARG_FLOAT8(14);
+	pv23 = PG_GETARG_FLOAT8(15);
+	pv25 = PG_GETARG_FLOAT8(16);
 
+	if (strstr(zpn, ctype1)) {
+		pv21 = PG_GETARG_FLOAT8(14);
+		pv23 = PG_GETARG_FLOAT8(15);
+		pv25 = PG_GETARG_FLOAT8(16);
+	}
+
+	/*
 	if PG_ARGISNULL(14) {
 		pv21 = 0.0;
 	} else {
@@ -99,6 +137,7 @@ Datum onchip(PG_FUNCTION_ARGS) {
 	} else {
 		pv25 = PG_GETARG_FLOAT8(16);
 	}
+	*/
 
 	/* initialize wcs structure */
 	wcs = malloc(sizeof(struct wcsprm));
@@ -156,7 +195,7 @@ Datum onchip(PG_FUNCTION_ARGS) {
 
 	ereport( INFO,
 		( errcode( ERRCODE_SUCCESSFUL_COMPLETION ),
-		errmsg( "%f %f -> %f %f %d  : %s %s \n", world[0], world[1], pixcrd[0], pixcrd[1], res, ctype1, ctype2   )));
+		errmsg( "%f %f -> %f %f %d  : %s %s %f %f %f \n", world[0], world[1], pixcrd[0], pixcrd[1], res, ctype1, ctype2, pv21, pv23, pv25   )));
 	
 
 	if (pixcrd[0]>0 & pixcrd[0]<=naxis1 & pixcrd[1]>0 & pixcrd[1]<=naxis2) {
